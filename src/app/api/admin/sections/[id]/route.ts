@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { adminGuard, bodyOf, failure, invalid } from "@/lib/admin-api";
+export async function PATCH(request: Request, { params }: { params: { id: string } }) { const denied = await adminGuard(); if (denied) return denied; const body = await bodyOf(request); const name = String(body?.name ?? "").trim(); const capacity = Number(body?.capacity); if (!name || !Number.isInteger(capacity) || capacity < 1) return invalid("Section name and a positive capacity are required"); try { return NextResponse.json(await prisma.section.update({ where: { id: params.id }, data: { name, capacity } })); } catch (error) { return failure(error); } }
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) { const denied = await adminGuard(); if (denied) return denied; try { await prisma.section.delete({ where: { id: params.id } }); return NextResponse.json({ ok: true }); } catch (error) { return failure(error); } }
