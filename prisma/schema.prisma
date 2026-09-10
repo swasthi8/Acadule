@@ -34,6 +34,13 @@ enum AvailabilityStatus {
   UNAVAILABLE
 }
 
+enum RequestStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -85,15 +92,17 @@ model VerificationToken {
 }
 
 model Teacher {
-  id           String                @id @default(cuid())
-  userId       String                @unique
-  employeeCode String                @unique
-  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assignments  TeacherAssignment[]
-  availability TeacherAvailability[]
-  timetableEntries TimetableEntry[]
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
+  id                String                @id @default(cuid())
+  userId            String                @unique
+  employeeCode      String                @unique
+  isAvailable       Boolean               @default(true)
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments       TeacherAssignment[]
+  availability      TeacherAvailability[]
+  timetableEntries  TimetableEntry[]
+  requests          TeacherRequest[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 }
 
 model Student {
@@ -120,69 +129,69 @@ model Class {
 }
 
 model Section {
-  id             String                @id @default(cuid())
-  classId        String
-  name           String
-  capacity       Int
-  class          Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
-  students       Student[]
-  subjects       SectionSubject[]
-  availability   SectionAvailability[]
+  id               String                @id @default(cuid())
+  classId          String
+  name             String
+  capacity         Int
+  class            Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
+  students         Student[]
+  subjects         SectionSubject[]
+  availability     SectionAvailability[]
   timetableEntries TimetableEntry[]
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@unique([classId, name])
   @@index([classId])
 }
 
 model Subject {
-  id             String                @id @default(cuid())
-  code           String                @unique
-  name           String
-  sections       SectionSubject[]
+  id               String              @id @default(cuid())
+  code             String              @unique
+  name             String
+  sections         SectionSubject[]
   timetableEntries TimetableEntry[]
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 }
 
 model Room {
-  id             String              @id @default(cuid())
-  name           String              @unique
-  capacity       Int
-  availability   RoomAvailability[]
+  id               String              @id @default(cuid())
+  name             String              @unique
+  capacity         Int
+  availability     RoomAvailability[]
   timetableEntries TimetableEntry[]
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 }
 
 model Period {
-  id             String              @id @default(cuid())
-  periodNumber   Int                 @unique
-  startTime      String
-  endTime        String
-  timetableEntries TimetableEntry[]
-  teacherAvailability TeacherAvailability[]
-  roomAvailability RoomAvailability[]
-  sectionAvailability SectionAvailability[]
+  id                   String                  @id @default(cuid())
+  periodNumber         Int                     @unique
+  startTime            String
+  endTime              String
+  timetableEntries     TimetableEntry[]
+  teacherAvailability  TeacherAvailability[]
+  roomAvailability     RoomAvailability[]
+  sectionAvailability  SectionAvailability[]
 
   @@unique([startTime, endTime])
 }
 
 model WorkingDay {
-  id        String    @id @default(cuid())
-  day       DayOfWeek @unique
-  enabled   Boolean   @default(true)
+  id      String    @id @default(cuid())
+  day     DayOfWeek @unique
+  enabled Boolean   @default(true)
 }
 
 model SectionSubject {
-  id                   String              @id @default(cuid())
-  sectionId            String
-  subjectId            String
+  id                    String              @id @default(cuid())
+  sectionId             String
+  subjectId             String
   requiredWeeklyPeriods Int
-  section              Section             @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  subject              Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  assignments          TeacherAssignment[]
+  section               Section             @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subject               Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  assignments           TeacherAssignment[]
 
   @@unique([sectionId, subjectId])
   @@index([subjectId])
@@ -236,33 +245,51 @@ model SectionAvailability {
 }
 
 model Timetable {
-  id        String          @id @default(cuid())
-  version   Int             @default(1)
-  status    TimetableStatus @default(DRAFT)
-  entries   TimetableEntry[]
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id          String          @id @default(cuid())
+  version     Int             @default(1)
+  status      TimetableStatus @default(DRAFT)
+  entries     TimetableEntry[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   publishedAt DateTime?
 }
 
 model TimetableEntry {
-  id                   String             @id @default(cuid())
-  timetableId          String
-  sectionId            String
-  subjectId            String
-  teacherId            String
-  roomId               String
-  day                  DayOfWeek
-  periodId             String
-  timetable            Timetable          @relation(fields: [timetableId], references: [id], onDelete: Cascade)
-  section              Section            @relation(fields: [sectionId], references: [id], onDelete: Restrict)
-  subject              Subject            @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  teacher              Teacher            @relation(fields: [teacherId], references: [id], onDelete: Restrict)
-  room                 Room               @relation(fields: [roomId], references: [id], onDelete: Restrict)
-  period               Period             @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  id         String     @id @default(cuid())
+  timetableId String
+  sectionId   String
+  subjectId   String
+  teacherId   String
+  roomId      String
+  day         DayOfWeek
+  periodId    String
+
+  timetable   Timetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  section     Section   @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  period      Period   @relation(fields: [periodId], references: [id], onDelete: Restrict)
 
   @@unique([timetableId, sectionId, day, periodId])
   @@unique([timetableId, teacherId, day, periodId])
   @@unique([timetableId, roomId, day, periodId])
   @@index([timetableId, day, periodId])
+}
+
+model TeacherRequest {
+  id          String        @id @default(cuid())
+  teacherId   String
+  type        String
+  subject     String
+  description String        @db.Text
+  status      RequestStatus @default(PENDING)
+  adminReply  String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  teacher     Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([status])
 }

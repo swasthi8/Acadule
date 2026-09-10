@@ -1,0 +1,2 @@
+ALTER TABLE "Teacher"
+ADD COLUMN "isAvailable" BOOLEAN NOT NULL DEFAULT true;

@@ -1,6 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { BrandLogo } from "@/components/brand-logo";
 
 type Period = { id: string; periodNumber: number; startTime: string; endTime: string };
 type WorkingDay = { id: string; day: string; enabled: boolean };
@@ -17,8 +18,8 @@ export function StudentPortal({ name, email, className, sectionName, periods, wo
   const upcoming = todayEntries.find((entry) => toMinutes(entry.startTime) > currentMinutes()) ?? todayEntries[0];
   const subjects = new Set(entries.map((entry) => entry.subject)).size;
 
-  return <main className="min-h-screen bg-[#07111f] px-4 py-6 text-slate-100 sm:px-6 lg:px-10"><div className="mx-auto max-w-[1500px]">
-    <header className="flex flex-wrap items-end justify-between gap-5 border-b border-slate-800 pb-6"><div><p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">Acadule</p><h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Student Portal</h1><p className="mt-2 text-slate-400">{name}{email ? ` · ${email}` : ""}</p><p className="mt-1 text-sm text-slate-500">{className} · Section {sectionName}</p></div><button className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-cyan-300 hover:text-white" onClick={() => signOut({ callbackUrl: "/" })}>Log out</button></header>
+  return <main className="portal-theme min-h-screen bg-[#07111f] px-4 py-6 text-slate-100 sm:px-6 lg:px-10"><div className="mx-auto max-w-[1500px]">
+    <header className="flex flex-wrap items-end justify-between gap-5 border-b border-slate-800 pb-6"><div><BrandLogo /><h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Student Portal</h1><p className="mt-2 text-slate-400">{name}{email ? ` · ${email}` : ""}</p><p className="mt-1 text-sm text-slate-500">{className} · Section {sectionName}</p></div><button className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-cyan-300 hover:text-white" onClick={() => signOut({ callbackUrl: "/" })}>Log out</button></header>
     {!entries.length ? <EmptyState sectionName={sectionName} /> : <><section className="mt-6 grid gap-3 sm:grid-cols-4"><Stat label="Weekly periods" value={entries.length} /><Stat label="Subjects this week" value={subjects} /><Stat label="Current section" value={`Section ${sectionName}`} /><Stat label="Current class" value={className} /></section><Upcoming entry={upcoming} today={today} /><WeeklyGrid days={days} periods={periods} entries={entries} /><TodayClasses today={today} entries={todayEntries} upcoming={upcoming} /></>}
   </div></main>;
 }
