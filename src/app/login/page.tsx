@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -140,14 +141,25 @@ export default function LoginPage() {
               <label className="grid gap-2 text-sm font-medium text-gray-700">
                 Password
 
-                <input
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-3 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[#198754] focus:ring-2 focus:ring-[#198754]/10"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  required
-                />
+                <span className="relative block">
+                  <input
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-3 pr-16 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[#198754] focus:ring-2 focus:ring-[#198754]/10"
+                    name="password"
+                    type={passwordVisible ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <button
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500 hover:text-[#198754]"
+                    type="button"
+                    onClick={() => setPasswordVisible((current) => !current)}
+                    aria-label={passwordVisible ? "Hide password" : "Show password"}
+                    aria-pressed={passwordVisible}
+                  >
+                    {passwordVisible ? "Hide" : "Show"}
+                  </button>
+                </span>
               </label>
 
               {/* Error */}

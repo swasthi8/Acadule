@@ -47,7 +47,11 @@ export async function POST(request: Request) {
   try {
     if (!(await validateResource(input.kind, input.entityId, input.periodId))) return invalid("The selected resource or period does not exist");
     const data = { day: input.day, periodId: input.periodId, status: input.status };
-    const result = input.kind === "teacher" ? await prisma.teacherAvailability.create({ data: { teacherId: input.entityId, ...data } }) : input.kind === "room" ? await prisma.roomAvailability.create({ data: { roomId: input.entityId, ...data } }) : await prisma.sectionAvailability.create({ data: { sectionId: input.entityId, ...data } });
+    const result = input.kind === "teacher"
+      ? await prisma.teacherAvailability.upsert({ where: { teacherId_day_periodId: { teacherId: input.entityId, day: input.day, periodId: input.periodId } }, update: { status: input.status }, create: { teacherId: input.entityId, ...data } })
+      : input.kind === "room"
+      ? await prisma.roomAvailability.upsert({ where: { roomId_day_periodId: { roomId: input.entityId, day: input.day, periodId: input.periodId } }, update: { status: input.status }, create: { roomId: input.entityId, ...data } })
+      : await prisma.sectionAvailability.upsert({ where: { sectionId_day_periodId: { sectionId: input.entityId, day: input.day, periodId: input.periodId } }, update: { status: input.status }, create: { sectionId: input.entityId, ...data } });
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") return NextResponse.json({ error: "A condition already exists for this resource, day, and period" }, { status: 409 });

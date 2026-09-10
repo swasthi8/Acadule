@@ -133,7 +133,9 @@ model Section {
   classId          String
   name             String
   capacity         Int
+  defaultRoomId    String?
   class            Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
+  defaultRoom      Room?                 @relation("SectionDefaultRoom", fields: [defaultRoomId], references: [id], onDelete: SetNull)
   students         Student[]
   subjects         SectionSubject[]
   availability     SectionAvailability[]
@@ -143,6 +145,7 @@ model Section {
 
   @@unique([classId, name])
   @@index([classId])
+  @@index([defaultRoomId])
 }
 
 model Subject {
@@ -156,13 +159,14 @@ model Subject {
 }
 
 model Room {
-  id               String              @id @default(cuid())
-  name             String              @unique
-  capacity         Int
-  availability     RoomAvailability[]
-  timetableEntries TimetableEntry[]
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  id                String              @id @default(cuid())
+  name              String              @unique
+  capacity          Int
+  availability      RoomAvailability[]
+  timetableEntries  TimetableEntry[]
+  defaultForSections Section[]          @relation("SectionDefaultRoom")
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 }
 
 model Period {

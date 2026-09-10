@@ -9,7 +9,7 @@ export type ValidationEntry = {
 };
 
 type Assignment = { id: string; sectionId: string; subjectId: string; teacherId: string; requiredWeeklyPeriods: number };
-type Section = { id: string; capacity: number };
+type Section = { id: string; capacity: number; defaultRoomId: string | null };
 type Room = { id: string; capacity: number };
 type Availability = { teacherId?: string; sectionId?: string; roomId?: string; day: string; periodId: string; status: string };
 
@@ -52,6 +52,7 @@ export function validateTimetable(entries: ValidationEntry[], context: Validatio
     if (!periods.has(entry.periodId) || !workingDays.has(entry.day)) errors.push(`Entry uses an unconfigured day or period`);
     if (assignment && (assignment.sectionId !== entry.sectionId || assignment.subjectId !== entry.subjectId || assignment.teacherId !== entry.teacherId)) errors.push(`Entry ${entry.assignmentId} does not match its teacher-subject-section assignment`);
     if (section && room && room.capacity < section.capacity) errors.push(`Room ${entry.roomId} cannot hold section ${entry.sectionId}`);
+    if (section && section.defaultRoomId && entry.roomId !== section.defaultRoomId) errors.push(`Section ${entry.sectionId} must use its default room ${section.defaultRoomId}`);
     if (unavailableTeachers.has(`${entry.teacherId}:${entry.day}:${entry.periodId}`)) errors.push(`Teacher ${entry.teacherId} is unavailable at ${entry.day} ${entry.periodId}`);
     if (unavailableSections.has(`${entry.sectionId}:${entry.day}:${entry.periodId}`)) errors.push(`Section ${entry.sectionId} is unavailable at ${entry.day} ${entry.periodId}`);
     if (unavailableRooms.has(`${entry.roomId}:${entry.day}:${entry.periodId}`)) errors.push(`Room ${entry.roomId} is unavailable at ${entry.day} ${entry.periodId}`);

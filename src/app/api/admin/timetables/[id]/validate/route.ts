@@ -9,7 +9,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
   try {
     const [timetable, sections, rooms, periods, workingDays, teacherAvailability, sectionAvailability, roomAvailability, assignmentRows] = await Promise.all([
       prisma.timetable.findUnique({ where: { id: params.id }, include: { entries: true } }),
-      prisma.section.findMany({ select: { id: true, capacity: true } }),
+      prisma.section.findMany({ select: { id: true, capacity: true, defaultRoomId: true } }),
       prisma.room.findMany({ select: { id: true, capacity: true } }),
       prisma.period.findMany({ select: { id: true } }),
       prisma.workingDay.findMany({ select: { day: true, enabled: true } }),

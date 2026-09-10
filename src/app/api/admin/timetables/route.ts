@@ -30,7 +30,7 @@ export async function POST() {
 	const denied = await adminGuard(); if (denied) return denied;
 	try {
 		const [sections, teachers, subjects, rooms, periods, workingDays, teacherAvailability, roomAvailability, sectionAvailability, sectionSubjects, assignmentRows, latest] = await Promise.all([
-			prisma.section.findMany({ select: { id: true, capacity: true } }),
+			prisma.section.findMany({ select: { id: true, capacity: true, defaultRoomId: true } }),
 			prisma.teacher.findMany({ select: { id: true, user: { select: { name: true, email: true } } } }),
 			prisma.subject.findMany({ select: { id: true } }),
 			prisma.room.findMany({ select: { id: true, capacity: true } }),

@@ -30,6 +30,11 @@ def _unavailable(records: list[dict[str, Any]], entity_key: str) -> set[tuple[st
     }
 
 
+def _room_ids_for_section(section: dict[str, Any], rooms: dict[str, dict[str, Any]]) -> list[str]:
+    default_room_id = _as_id(section.get("defaultRoomId"))
+    return [default_room_id] if default_room_id in rooms else []
+
+
 def solve_timetable(payload: dict[str, Any], time_limit_seconds: float = 20.0) -> dict[str, Any]:
     sections = { _as_id(item.get("id")): item for item in payload.get("sections", []) }
     teachers = { _as_id(item.get("id")): item for item in payload.get("teachers", []) }
@@ -47,6 +52,11 @@ def solve_timetable(payload: dict[str, Any], time_limit_seconds: float = 20.0) -
     unavailable_rooms = _unavailable(payload.get("availability", {}).get("rooms", []), "roomId")
 
     errors: list[str] = []
+    errors.extend(
+        f"Section {section_id} must have a default room before timetable generation"
+        for section_id, section in sections.items()
+        if not _as_id(section.get("defaultRoomId"))
+    )
     candidates: list[Candidate] = []
     candidates_by_assignment: dict[str, list[int]] = defaultdict(list)
 
@@ -69,7 +79,8 @@ def solve_timetable(payload: dict[str, Any], time_limit_seconds: float = 20.0) -
                     continue
                 if (section_id, day, period_id) in unavailable_sections:
                     continue
-                for room_id, room in rooms.items():
+                for room_id in _room_ids_for_section(sections[section_id], rooms):
+                    room = rooms[room_id]
                     if int(room.get("capacity", 0) or 0) < int(sections[section_id].get("capacity", 0) or 0):
                         continue
                     if (room_id, day, period_id) in unavailable_rooms:
