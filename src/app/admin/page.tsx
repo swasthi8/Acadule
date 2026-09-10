@@ -18,9 +18,9 @@ export default async function AdminPage() {
     prisma.period.findMany({ orderBy: { periodNumber: "asc" } }),
     prisma.teacherAssignment.findMany({ include: { teacher: { include: { user: true } }, sectionSubject: { include: { section: { include: { class: true } }, subject: true } } }, orderBy: { id: "asc" } }),
     prisma.sectionSubject.findMany({ include: { section: { include: { class: true } }, subject: true }, orderBy: [{ sectionId: "asc" }, { subjectId: "asc" }] }),
-    prisma.teacherAvailability.findMany({ select: { teacherId: true, day: true, periodId: true, status: true } }),
-    prisma.sectionAvailability.findMany({ select: { sectionId: true, day: true, periodId: true, status: true } }),
-    prisma.roomAvailability.findMany({ select: { roomId: true, day: true, periodId: true, status: true } }),
+    prisma.teacherAvailability.findMany({ include: { teacher: { include: { user: true } }, period: true }, orderBy: [{ day: "asc" }, { period: { periodNumber: "asc" } }] }),
+    prisma.sectionAvailability.findMany({ include: { section: { include: { class: true } }, period: true }, orderBy: [{ day: "asc" }, { period: { periodNumber: "asc" } }] }),
+    prisma.roomAvailability.findMany({ include: { room: true, period: true }, orderBy: [{ day: "asc" }, { period: { periodNumber: "asc" } }] }),
   ]);
 
   const timetables = await prisma.timetable.findMany({ include: { _count: { select: { entries: true } }, entries: { include: { subject: true, teacher: { include: { user: true } }, room: true, period: true }, orderBy: { day: "asc" } } }, orderBy: { updatedAt: "desc" }, take: 10 });
@@ -58,6 +58,11 @@ export default async function AdminPage() {
         subjects,
         rooms,
         periods,
+        availability: [
+          ...teacherAvailability.map((item) => ({ id: item.id, kind: "teacher" as const, entityId: item.teacherId, resourceName: item.teacher.user.name ?? item.teacher.employeeCode, day: item.day, periodId: item.periodId, periodNumber: item.period.periodNumber, startTime: item.period.startTime, status: item.status })),
+          ...roomAvailability.map((item) => ({ id: item.id, kind: "room" as const, entityId: item.roomId, resourceName: item.room.name, day: item.day, periodId: item.periodId, periodNumber: item.period.periodNumber, startTime: item.period.startTime, status: item.status })),
+          ...sectionAvailability.map((item) => ({ id: item.id, kind: "section" as const, entityId: item.sectionId, resourceName: `${item.section.class.name} / ${item.section.name}`, day: item.day, periodId: item.periodId, periodNumber: item.period.periodNumber, startTime: item.period.startTime, status: item.status })),
+        ],
         assignments: assignmentSummaries,
         sectionSubjects: sectionSubjectSummaries,
         timetables: timetableSummaries,
