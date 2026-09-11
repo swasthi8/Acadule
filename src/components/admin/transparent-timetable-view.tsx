@@ -43,14 +43,36 @@ export function TransparentTimetableView({ sections, periods, timetables, onDone
   const totalScheduled = requirements.reduce((total, item) => total + item.scheduled, 0);
   const allSectionsRequired = selected?.requirements.reduce((total, item) => total + item.requiredWeeklyPeriods, 0) ?? 0;
   const allSectionsScheduled = selected?.requirements.reduce((total, item) => total + item.scheduled, 0) ?? 0;
+  const nextVersion = (timetables.reduce((highest, timetable) => Math.max(highest, timetable.version), 0) || 0) + 1;
+  const generationScope = sections.length ? [...new Set(sections.map((section) => `${section.className} / Section ${section.name}`))].join(", ") : "No sections configured";
 
   async function generate() { try { await request("/api/admin/timetables", { method: "POST" }); onNotify("Conflict-free draft generated and saved"); onDone(); } catch (error) { onNotify(error instanceof Error ? error.message : "Unable to generate timetable"); } }
   async function validate() { if (!selected) return; try { await request(`/api/admin/timetables/${selected.id}/validate`, { method: "POST" }); onNotify("Timetable validated and ready for review"); onDone(); } catch (error) { onNotify(error instanceof Error ? error.message : "Timetable validation failed"); } }
   async function publish() { if (!selected) return; try { await request(`/api/admin/timetables/${selected.id}/publish`, { method: "POST" }); onNotify("Timetable published"); onDone(); } catch (error) { onNotify(error instanceof Error ? error.message : "Timetable must be validated before publishing"); } }
+  async function exportPublished() {
+    try {
+      const response = await fetch("/api/admin/timetables/export");
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error ?? "Unable to export the published timetable");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "acalude-published-timetable.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      onNotify(error instanceof Error ? error.message : "Unable to export the published timetable");
+    }
+  }
   async function deleteTimetable(item: Timetable) { const message = item.status === "PUBLISHED" ? `Delete published timetable v${item.version}?\nThis will permanently remove its scheduled entries.` : `Delete Timetable v${item.version}?\nThis will remove ${item.entries} scheduled entries.`; if (!window.confirm(message)) return; try { await request(`/api/admin/timetables/${item.id}`, { method: "DELETE" }); onNotify(`Timetable v${item.version} deleted`); onDone(); } catch (error) { onNotify(error instanceof Error ? error.message : "Unable to delete timetable"); } }
 
   return <div className="grid gap-6">
-    <Panel title="Timetable workflow" eyebrow="Draft to publication"><div className="flex flex-wrap gap-2"><ActionButton primary onClick={generate}>Generate Timetable</ActionButton>{selected && <><ActionButton onClick={validate}>Validate</ActionButton><ActionButton onClick={publish}>Publish</ActionButton></>}</div></Panel>
+    <Panel title="Timetable workflow" eyebrow="Draft to publication"><div className="mb-4 grid gap-1 text-sm"><p className="font-medium text-slate-700">Generating for: <span className="font-normal text-slate-500">{generationScope}</span></p><p className="text-slate-500">Next timetable version: v{nextVersion} · Academic period: not configured</p></div><div className="flex flex-wrap gap-2"><ActionButton primary onClick={generate}>Generate Timetable</ActionButton>{selected && <><ActionButton onClick={validate}>Validate</ActionButton><ActionButton onClick={publish}>Publish</ActionButton><ActionButton onClick={exportPublished}>Export as PDF</ActionButton></>}</div></Panel>
     {selected && <>
       <Panel title={`Weekly grid · Draft v${selected.version}`} eyebrow={`${selected.entries} total scheduled entries`}>
         <div className="mb-5 flex flex-wrap items-center gap-2"><select aria-label="Select timetable" value={selected.id} onChange={(event) => setSelectedId(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200">{timetables.map((item) => <option value={item.id} key={item.id}>v{item.version} · {item.status}</option>)}</select><span className="rounded-full bg-amber-400/10 px-2.5 py-1 text-xs text-amber-300">{selected.status}</span><span className="text-xs text-slate-400">All sections: {allSectionsScheduled} / {allSectionsRequired} periods scheduled</span></div>

@@ -29,7 +29,7 @@ function runSolver(payload: Record<string, unknown>) {
 export async function POST() {
 	const denied = await adminGuard(); if (denied) return denied;
 	try {
-		const [sections, teachers, subjects, rooms, periods, workingDays, teacherAvailability, roomAvailability, sectionAvailability, sectionSubjects, assignmentRows, latest] = await Promise.all([
+		const [sections, teachers, subjects, rooms, periods, workingDays, teacherAvailability, roomAvailability, sectionAvailability, sectionSubjects, assignmentRows, latest, publishedTimetable] = await Promise.all([
 			prisma.section.findMany({ select: { id: true, capacity: true, defaultRoomId: true } }),
 			prisma.teacher.findMany({ select: { id: true, user: { select: { name: true, email: true } } } }),
 			prisma.subject.findMany({ select: { id: true } }),
@@ -42,8 +42,17 @@ export async function POST() {
 			prisma.sectionSubject.findMany({ include: { section: { include: { class: true } }, subject: true } }),
 			prisma.teacherAssignment.findMany({ include: { sectionSubject: { include: { section: { include: { class: true } }, subject: true } } } }),
 			prisma.timetable.findFirst({ orderBy: { version: "desc" }, select: { version: true } }),
+			prisma.timetable.findFirst({ where: { status: TimetableStatus.PUBLISHED }, orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }], select: { version: true, entries: { select: { sectionId: true, section: { select: { name: true, class: { select: { name: true } } } } } } } }),
 		]);
 		if (!assignmentRows.length) return invalid("Create at least one teacher assignment before generating a timetable");
+		if (publishedTimetable) {
+			const generatedSectionIds = new Set(assignmentRows.map((row) => row.sectionSubject.sectionId));
+			const publishedScope = publishedTimetable.entries.filter((entry) => generatedSectionIds.has(entry.sectionId));
+			if (publishedScope.length) {
+				const scope = [...new Map(publishedScope.map((entry) => [entry.sectionId, `${entry.section.class.name} / Section ${entry.section.name}`])).values()].join(", ");
+				return NextResponse.json({ error: `Timetable already published for ${scope}. Please unpublish it or create a new version before generating another timetable.` }, { status: 409 });
+			}
+		}
 		const prevalidation = prevalidateTimetable({ teachers, periods, workingDays, teacherAvailability, sectionSubjects, assignments: assignmentRows });
 		if (!prevalidation.valid) return NextResponse.json({ error: "Timetable cannot be generated", conflicts: prevalidation.errors, teacherCapacity: prevalidation.teacherCapacity }, { status: 422 });
 		const assignments = assignmentRows.map((row) => ({ id: row.id, teacherId: row.teacherId, sectionId: row.sectionSubject.sectionId, subjectId: row.sectionSubject.subjectId, requiredWeeklyPeriods: row.sectionSubject.requiredWeeklyPeriods }));
